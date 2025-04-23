@@ -1,5 +1,6 @@
 package boj;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Scanner;
@@ -9,6 +10,7 @@ public class Problem4179 {
     static int[] dx = {-1, 1, 0, 0};
     static int[] dy = {0, 0, -1, 1};
     static int[][] map;
+    static int[][] fireMap;
     static boolean[][] visited;
 
     public static void main(String[] args) {
@@ -16,19 +18,25 @@ public class Problem4179 {
         n = sc.nextInt();
         m = sc.nextInt();
         map = new int[n][m];
+        fireMap = new int[n][m];
+        for (int i = 0; i < n; i++) {
+            Arrays.fill(fireMap[i], -1);  // 불 도달 시간 초기화
+        }
+
+        Queue<int[]> fireQueue = new LinkedList<>();
+        Queue<Position> jihunQueue = new LinkedList<>();
         sc.nextLine();
-        Position start;
-        Position fire;
         for (int i = 0; i < n; i++) {
             String line = sc.nextLine();
             for (int j = 0; j < m; j++) {
                 char space = line.charAt(j);
                 if (space == 'J') {
                     map[i][j] = 1;
-                    start = new Position(i, j, 0);
+                    jihunQueue.offer(new Position(i, j, 0));
                 } else if (space == 'F') {
-                    map[i][j] = -1;
-                    fire = new Position(i, j, 0);
+                    map[i][j] = 0;
+                    fireMap[i][j] = 0;
+                    fireQueue.offer(new int[]{i, j});
                 } else if (space == '.') {
                     map[i][j] = 1;
                 } else {
@@ -37,28 +45,45 @@ public class Problem4179 {
             }
         }
         visited = new boolean[n][m];
-        int result = bfs(start, fire);
-        System.out.println(result);
+        int result = bfs(jihunQueue, fireQueue);
+        if (result == Integer.MAX_VALUE) {
+            System.out.println("IMPOSSIBLE");
+        } else {
+            System.out.println(result);
+        }
     }
-//    1 : 통행, 0 : 불가능, -1 : 불
-    public static int bfs(Position start) {
+
+    public static int bfs(Queue<Position> jihunQueue, Queue<int[]> fireQueue) {
         int result = Integer.MAX_VALUE;
-        Queue<Position> queue = new LinkedList<>();
-        queue.offer(start);
-        while (!queue.isEmpty()) {
-            Position current = queue.poll();
-            if ((current.x == n - 1 || current.y == m - 1) && map[current.x][current.y] != 'F') {
-                result = Math.min(result, current.count);
-            }
-            for (int k = 0; k < 4; k++) {
-                int nx = current.x + dx[k];
-                int ny = current.y + dy[k];
-                if (nx < 0 || ny < 0 || nx >= n || ny >= m || visited[nx][ny] || map[nx][ny] == 'F') {
-                    continue;
+        while (!fireQueue.isEmpty()) {
+            int[] f = fireQueue.poll();
+            for (int i = 0; i < 4; i++) {
+                int nx = f[0] + dx[i];
+                int ny = f[1] + dy[i];
+                if (nx >= 0 && nx < n && ny >= 0 && ny < m && map[nx][ny] != 0 && fireMap[nx][ny] == -1) {
+                    fireMap[nx][ny] = fireMap[f[0]][f[1]] + 1;
+                    fireQueue.add(new int[]{nx, ny});
                 }
-                int fireNx = nx + dx[k];
-                queue.offer(new Position(nx, ny, current.count + 1));
-                visited[nx][ny] = true;
+            }
+        }
+
+        while (!jihunQueue.isEmpty()) {
+            Position cur = jihunQueue.poll();
+            if (cur.x == 0 || cur.x == n-1 || cur.y == 0 || cur.y == m-1) {
+                return cur.count + 1;  // 탈출
+            }
+
+            for (int i = 0; i < 4; i++) {
+                int nx = cur.x + dx[i];
+                int ny = cur.y + dy[i];
+
+                if (nx >= 0 && nx < n && ny >= 0 && ny < m
+                        && map[nx][ny] == 1 && !visited[nx][ny]
+                        && (fireMap[nx][ny] == -1 || fireMap[nx][ny] > cur.count + 1)) {
+
+                    visited[nx][ny] = true;
+                    jihunQueue.add(new Position(nx, ny, cur.count + 1));
+                }
             }
         }
         return result;
